@@ -1,0 +1,28 @@
+2024-09-24 03:27:09,297 - INFO - Starting initial movement
+2024-09-24 03:27:17,066 - INFO - Task Completed: 435
+2024-09-24 03:27:19,334 - INFO - Task Completed: 172
+2024-09-24 03:27:19,398 - INFO - Task Completed: 816
+2024-09-24 03:27:26,494 - INFO - Object Detected: book
+2024-09-24 03:27:31,377 - INFO - Object Detected: scissors
+2024-09-24 03:27:37,123 - INFO - Object Detected: person
+2024-09-24 03:27:38,389 - INFO - Object Detected: chair
+2024-09-24 03:27:38,394 - INFO - Object Detected: potted plant
+2024-09-24 03:27:38,399 - INFO - Object Detected: dining table
+2024-09-24 03:27:38,402 - INFO - Dining Table detected. Moving Towards kitchen.
+2024-09-24 03:28:05,246 - INFO - Task Completed: 689
+2024-09-24 03:28:25,238 - INFO - Task Completed: 1234
+2024-09-24 03:28:25,239 - INFO - Robot is in kitchen now
+2024-10-06 20:12:29,927 - INFO - Starting initial movement
+2024-10-06 20:12:37,575 - INFO - Task Completed: 449
+2024-10-06 20:12:38,761 - INFO - Task Completed: 978
+2024-10-06 20:12:38,828 - INFO - Task Completed: 953
+2024-10-06 20:12:53,819 - INFO - Object Detected: person
+2024-10-06 20:12:55,172 - INFO - Object Detected: scissors
+2024-10-06 20:12:56,548 - INFO - Object Detected: bench
+2024-10-06 20:13:00,121 - INFO - Object Detected: chair
+2024-10-06 20:13:00,123 - INFO - Object Detected: potted plant
+2024-10-06 20:13:03,734 - INFO - Object Detected: dining table
+2024-10-06 20:13:03,735 - INFO - Dining Table detected. Moving Towards kitchen.
+2024-10-06 20:13:12,558 - INFO - Task Completed: 747
+2024-10-06 20:13:27,038 - INFO - Task Completed: 1234
+2024-10-06 20:13:27,039 - INFO - Robot is in kitchen now
