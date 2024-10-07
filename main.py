@@ -1,108 +1,71 @@
-import numpy as np
+from stable_baselines3 import TD3
+from RLCode import RoboticArmEnv
+
 import os
-import torch
-from luckyrobots import core as lr
-from PIL import Image
-from stable_baselines3 import PPO
 
-class BasicMovementRL:
-    def __init__(self, model, temperature=1.0, bin_size=1.0):
-        self.model = model
-        self.temperature = temperature
-        self.bin_size = bin_size
-        self.state_visit_counts = {}
-        self.max_bin_count = 100
-        self.observations = np.zeros(5)  # Example initialization
-        self.hit_count = 0
-        self.reward = 0
+import luckyrobots as lr
 
-    def GenerateCommand(self):
-        action_probs = self.GetActionProbabilities(self.observations)
-        action = np.random.choice(len(action_probs), p=action_probs)
-        direction, speed = self.MapActionToCommand(action)
-        self.MoveRobot(action, direction, speed)
+class SimulationController:
+    def __init__(self):
+        self.env = RoboticArmEnv()
+        
+        self.model = TD3("CnnPolicy", self.env, verbose=1, buffer_size=10000)
 
-    def GetActionProbabilities(self, observations):
-        with torch.no_grad():
-            action, _ = self.model.predict(observations, deterministic=True)
-        action_probs = self.softmax(action, self.temperature)
-        return action_probs
+    def update_environment(self, rgb_image, depth_image):
+        """
+        Send RGB and Depth images to the Gym environment.
+        """
+        self.env.update_observation(rgb_image, depth_image)
 
-    def softmax(self, x, temperature):
-        x = x / temperature
-        e_x = np.exp(x - np.max(x))
-        return e_x / e_x.sum(axis=0)
+    def predict_action(self):
+        """
+        Get the predicted action from the model.
+        """
+        obs = self.env.state  # Get current state from the Gym environment
+        action, _ = self.model.predict(obs, deterministic=True)
+        return action
 
-    def MapActionToCommand(self, action):
-        if action == 0:
-            return 360, 1
-        elif action == 1:
-            return 270, 1
-        elif action == 2:
-            return 180, 1
-        elif action == 3:
-            return 90, 1
+    def execute_action(self, action):
+        """
+        Execute the predicted action in the simulation.
+        ach row of the action matrix corresponds to a joint with specific value ranges.
+        """
+        commands = []
 
-    def UpdateModel(self, total_timesteps=100000):
-        # Training loop for the model
-        self.GenerateCommand()  # Generate commands based on current observations
-        self.model.learn(total_timesteps=total_timesteps, reset_num_timesteps=False)
-        self.model.save("BasicMovementsModel.zip")
+        # Map action values to joint commands
+        commands.append([f"EX1 {int(action[0, 0] * 180)}"])  # EX1: -180 to +180
+        commands.append([f"EX2 {int(action[1, 0] * 180)}"])  # EX2: -180 to +180
+        commands.append([f"EX3 {int(action[2, 0] * 180)}"])  # EX3: -180 to +180
+        commands.append([f"EX4 {int(action[3, 0] * 360)}"])  # EX4: -360 to +360
+        commands.append([f"U {int(action[4, 0] * 10)}"])      # U: -10 to +10
+        commands.append([f"G {int(action[5, 0] * 10)}"])      # G: -10 to +10
+
+        lr.send_message(commands)
+
+    def train(self, total_timesteps):
+        """
+        Train the DQN model.
+        """
+        self.model.learn(total_timesteps=total_timesteps)
+
+# Example usage
+if __name__ == '__main__':
+    sim = SimulationController()
+    lr.start()
 
     @lr.on("robot_output")
-    def GetObservations(self, message: dict):
-        # Process observations from the message
-        body_pos = [float(message["body_pos"]["contents"].get(k, 0)) for k in ("tx", "ty", "tz")]
-        depthcam_values = [self.ProcessDepthCam(message["depth_cam1"]["file_path"]),
-                        self.ProcessDepthCam(message["depth_cam2"]["file_path"])]
-        self.observations = np.array(body_pos + depthcam_values)
-        discretized_state = self.DiscretizeState(self.observations)
-        self.UpdateVisitCounts(discretized_state)
+    def get_image_path(msg):
+        if msg and isinstance(msg, dict) and 'rgb_cam1' in msg:
+            image_path = msg['rgb_cam2'].get('file_path')
+            greyscale_img = msg['depth_cam2'].get('file_path')
+
+            if os.path.exists(image_path) and os.path.exists(greyscale_img):
+                rgb_image = image_path
+                depth_image = greyscale_img
 
 
-    def ProcessDepthCam(self, img_path: str) -> float:
-        if os.path.exists(img_path):
-            with Image.open(img_path) as img:
-                greyscale = np.array(img.convert('L'))
-                proximity_metric = np.mean(greyscale)
-                return (255 - proximity_metric) / 255 * 10.0
-        return 0.0
-        
-    def DiscretizeState(self, state):
-        state_bins = np.floor_divide(state, self.bin_size)
-        return tuple(state_bins)
 
-    def UpdateVisitCounts(self, state):
-        if state not in self.state_visit_counts:
-            self.state_visit_counts[state] = 0
-        self.state_visit_counts[state] += 1
 
-    @lr.on("hit_count")
-    def GetHitCount(self, hits):
-        self.hit_count = hits
-
-    @lr.on("task_complete")
-    def IsDone(self, status):
-        return status
-
-def call():
-    from CreateEnvironment import ToEnv
-    lr.start()
-    model_path = "BasicMovementsModel.zip"
-
-    if os.path.exists(model_path):
-        model = PPO.load(model_path, env=ToEnv())
-    else:
-        env = ToEnv()
-        policy_kwagr = dict(net_arch=[128, 128, 128])
-        model = PPO('MlpPolicy', env, policy_kwargs=policy_kwagr, verbose=1)
-
-    basic_movements = BasicMovementRL(model)
-    total_timesteps = 100000
-    for _ in total_timesteps:
-        basic_movements.UpdateModel(total_timesteps=total_timesteps)
-
-    model.save("BaicMovementsModel.zip")
-
-if __name__ == '__main__':
-    call()
+        sim.update_environment(rgb_image, depth_image)
+        action = sim.predict_action()
+        sim.execute_action(action)

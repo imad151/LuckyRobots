@@ -68,7 +68,7 @@ class MoveAndDetect:
             return
 
     def MoveToKitchen(self):
-        commands = [[{"id": 1234, "code": "W 7200 1"}]]
+        commands = [["W 7200 1"]]
         lr.send_message(commands)
 
     def TaskCompleted(self, id: str, message=""):
